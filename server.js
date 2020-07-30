@@ -1,8 +1,8 @@
 // Importing external pacakges - CommonJS
 const express = require("express");
 const bodyParser = require("body-parser");
-const fs = require("fs");
-const { response } = require("express");
+const dataAccessLayer = require("./dataAccessLayer");
+dataAccessLayer.connect();
 
 // Creating my Server
 const app = express();
@@ -11,21 +11,14 @@ const app = express();
 // Allow us to read JSON from requests
 app.use(bodyParser.json());
 
-// Read in JSON FILE (mock database)
-let products = [];
-
-try {
-  products = JSON.parse(fs.readFileSync("products.json")).products;
-} catch (error) {
-  console.log("No existing file.");
-}
-
 // Defining our HTTP Resource Methods
 // API Endpoints / Routes
 
 // GET ALL PRODUCTS
 // GET /api/products
-app.get("/api/products", (request, response) => {
+app.get("/api/products", async (request, response) => {
+  const products = await dataAccessLayer.findAll();
+
   response.send(products);
 });
 
@@ -55,30 +48,25 @@ app.get("/api/products/:id", (request, response) => {
 });
 
 // CREATE A NEW PRODUCT
-// POST /api/products { id: 123, name: 'apples', price: 1.99 }
-app.post("/api/products", (request, response) => {
+// POST /api/products { name: 'apples', price: 1.99, category: 'produce' }
+app.post("/api/products", async (request, response) => {
   // Read the json body from the request
   const body = request.body;
 
   // Validate the json body to have required properties
   /* Required Properties:
-    -id
     -name
     -price
+    -category
   */
-  if (!body.id || !body.name || !body.price) {
-    response.send("Bad Request. Validation Error. Missing id, name, or price!");
+  if (!body.name || !body.price || !body.category) {
+    response.send(
+      "Bad Request. Validation Error. Missing name, price, or category!"
+    );
     return;
   }
 
-  // Add the new product to our existing products array
-  products.push(body);
-
-  // Commit the new products array to the database (json file)
-  const jsonPayload = {
-    products: products,
-  };
-  fs.writeFileSync("products.json", JSON.stringify(jsonPayload));
+  await dataAccessLayer.insertOne(body);
 
   response.send();
 });
