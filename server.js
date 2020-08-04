@@ -1,6 +1,7 @@
 // Importing external pacakges - CommonJS
 const express = require("express");
 const bodyParser = require("body-parser");
+const cors = require("cors");
 // var ObjectID = require('mongodb').ObjectID;
 const dataAccessLayer = require("./dataAccessLayer");
 const { ObjectId, ObjectID } = require("mongodb");
@@ -14,6 +15,12 @@ dataAccessLayer.connect();
 
 // Creating my Server
 const app = express();
+
+// Installing the CORS middleware
+// allows us (the server) to respond to
+// requests from a different origin (URL)
+// than the server.
+app.use(cors());
 
 // Installing the body-parser middleware
 // Allow us to read JSON from requests
@@ -110,7 +117,7 @@ app.post("/api/products", async (request, response) => {
 
   await dataAccessLayer.insertOne(body);
 
-  response.send();
+  response.status(201).send();
 });
 
 // UPDATE EXISTING PRODUCT BY ID
