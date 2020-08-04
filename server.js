@@ -1,7 +1,15 @@
 // Importing external pacakges - CommonJS
 const express = require("express");
 const bodyParser = require("body-parser");
+// var ObjectID = require('mongodb').ObjectID;
 const dataAccessLayer = require("./dataAccessLayer");
+const { ObjectId, ObjectID } = require("mongodb");
+// ObjectId - a constructor for creating an objectId
+// that's part of a query
+
+// ObjectID - a static object with utility functions
+// like isValid()
+
 dataAccessLayer.connect();
 
 // Creating my Server
@@ -24,27 +32,40 @@ app.get("/api/products", async (request, response) => {
 
 // GET A SPECIFIC PRODUCT BY ID
 // GET /api/products/:id
-app.get("/api/products/:id", (request, response) => {
-  // Number() -> is a global function provided by JavaScript
-  // For converting strings to numbers.
-  const productId = Number(request.params.id);
+app.get("/api/products/:id", async (request, response) => {
+  const productId = request.params.id;
 
-  const product = products.find((p) => {
-    if (productId === p.id) {
-      return true;
-    }
-  });
-
-  /*
-  product = undefined => false
-  !undefined => !false => true
-  */
-  if (!product) {
-    response.send(`Product with id ${productId} not found!`);
+  if (!ObjectID.isValid(productId)) {
+    response.status(400).send(`ProductID ${productId} is incorrect.`);
     return;
   }
 
+  const productQuery = {
+    _id: new ObjectId(productId),
+  };
+
+  let product;
+
+  // How to handle promise rejection
+  // 1.) async / await version
+  // try / catch
+  try {
+    product = await dataAccessLayer.findOne(productQuery);
+  } catch (error) {
+    response.status(404).send(`Product with id ${productId} not found!`);
+    return;
+  }
   response.send(product);
+
+  // 2.) Promise version
+  // dataAccessLayer
+  //   .findOne(productQuery)
+  //   .then((product) => {
+  //     response.send(product);
+  //   })
+  //   .catch((error) => {
+  //     response.send(error);
+  //   });
 });
 
 // CREATE A NEW PRODUCT
@@ -60,9 +81,30 @@ app.post("/api/products", async (request, response) => {
     -category
   */
   if (!body.name || !body.price || !body.category) {
-    response.send(
-      "Bad Request. Validation Error. Missing name, price, or category!"
-    );
+    response
+      .status(400)
+      .send(
+        "Bad Request. Validation Error. Missing name, price (and greater than 0), or category!"
+      );
+    return;
+  }
+
+  // Validate data types of properties
+  // name => non-empty string
+  // price => Greater than 0 Number
+  // category => non-empty string
+  if (typeof body.name !== "string") {
+    response.status(400).send("The name parameter must be of type string");
+    return;
+  }
+
+  if (typeof body.category !== "string") {
+    response.status(400).send("The category parameter must be of type string");
+    return;
+  }
+
+  if (isNaN(Number(body.price))) {
+    response.status(400).send("The price parameter must be of type number");
     return;
   }
 
@@ -72,57 +114,70 @@ app.post("/api/products", async (request, response) => {
 });
 
 // UPDATE EXISTING PRODUCT BY ID
-// PUT /api/products/:id { id: 123, name: 'apples', price: 4.99 }
-app.put("/api/products/:id", (request, response) => {
-  const productId = Number(request.params.id);
+// PUT /api/products/:id { name: 'apples', price: 4.99, category: 'produce }
+app.put("/api/products/:id", async (request, response) => {
+  const productId = request.params.id;
+  const body = request.body;
 
-  const product = products.find((p) => {
-    return productId === p.id;
-  });
-
-  if (!product) {
-    response.send(`Product with id ${productId} not found!`);
+  if (!ObjectID.isValid(productId)) {
+    response.status(400).send(`ProductID ${productId} is incorrect.`);
     return;
   }
 
-  const body = request.body;
-
-  if (body.name) {
-    product.name = body.name;
+  // Validate data types of properties
+  // name => non-empty string
+  // price => Greater than 0 Number
+  // category => non-empty string
+  if (body.name && typeof body.name !== "string") {
+    response.status(400).send("The name parameter must be of type string");
+    return;
   }
 
-  if (body.price) {
-    product.price = body.price;
+  if (body.category && typeof body.category !== "string") {
+    response.status(400).send("The category parameter must be of type string");
+    return;
   }
 
-  const jsonPayload = {
-    products: products,
+  if (body.price && isNaN(Number(body.price))) {
+    response.status(400).send("The price parameter must be of type number");
+    return;
+  }
+
+  const productQuery = {
+    _id: new ObjectId(productId),
   };
-  fs.writeFileSync("products.json", JSON.stringify(jsonPayload));
+
+  try {
+    await dataAccessLayer.updateOne(productQuery, body);
+  } catch (error) {
+    response.status(404).send(`Product with id ${productId} not found!`);
+    return;
+  }
 
   response.send();
 });
 
 // DELETE EXISTING PRODUCY BY ID
 // DELETE /api/products/:id
-app.delete("/api/products/:id", (request, response) => {
-  const productId = Number(request.params.id);
+app.delete("/api/products/:id", async (request, response) => {
+  const productId = request.params.id;
 
-  const productIndex = products.findIndex((p) => {
-    return productId === p.id;
-  });
-
-  if (productIndex === -1) {
-    response.send(`Product with ID ${productId} not found!`);
+  if (!ObjectID.isValid(productId)) {
+    response.status(400).send(`ProductID ${productId} is incorrect.`);
     return;
   }
 
-  products.splice(productIndex, 1);
-
-  const jsonPayload = {
-    products: products,
+  const productQuery = {
+    _id: new ObjectId(productId),
   };
-  fs.writeFileSync("products.json", JSON.stringify(jsonPayload));
+
+  try {
+    await dataAccessLayer.deleteOne(productQuery);
+  } catch (error) {
+    response.status(404).send(`Product with id ${productId} not found!`);
+    return;
+  }
+
   response.send();
 });
 

@@ -2,7 +2,6 @@
 // https://www.npmjs.com/package/mongodb
 
 const MongoClient = require("mongodb").MongoClient;
-const ObjectId = require("mongodb").ObjectId;
 require("dotenv").config();
 
 // Grab env variables
@@ -114,6 +113,8 @@ const updateOne = function (query, newProduct) {
     newProductQuery.category = newProduct.category;
   }
 
+  console.log(query);
+
   return new Promise((resolve, reject) => {
     productCollection.updateOne(
       query,
@@ -122,6 +123,10 @@ const updateOne = function (query, newProduct) {
         if (error) {
           console.log(error);
           reject(error);
+          return;
+        } else if (result.modifiedCount === 0) {
+          console.log("No Document Found");
+          reject("No Document Found");
           return;
         }
 
@@ -137,9 +142,14 @@ const updateOne = function (query, newProduct) {
 const deleteOne = function (query) {
   return new Promise((resolve, reject) => {
     productCollection.deleteOne(query, (error, result) => {
+      console.log(result);
       if (error) {
         console.log(error);
         reject(error);
+        return;
+      } else if (result.deletedCount === 0) {
+        console.log("No Document Found");
+        reject("No Document Found");
         return;
       }
 
@@ -151,7 +161,7 @@ const deleteOne = function (query) {
 
 // Make all functions available to other javascript files
 // CommonJS Export
-module.exports = { connect, insertOne, findAll, findOne, updateOne };
+module.exports = { connect, insertOne, findAll, findOne, updateOne, deleteOne };
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
