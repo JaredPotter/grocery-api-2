@@ -2,7 +2,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-// var ObjectID = require('mongodb').ObjectID;
 const dataAccessLayer = require("./dataAccessLayer");
 const { ObjectId, ObjectID } = require("mongodb");
 // ObjectId - a constructor for creating an objectId
@@ -10,6 +9,8 @@ const { ObjectId, ObjectID } = require("mongodb");
 
 // ObjectID - a static object with utility functions
 // like isValid()
+
+const password = process.env.PASSWORD;
 
 dataAccessLayer.connect();
 
@@ -78,6 +79,14 @@ app.get("/api/products/:id", async (request, response) => {
 // CREATE A NEW PRODUCT
 // POST /api/products { name: 'apples', price: 1.99, category: 'produce' }
 app.post("/api/products", async (request, response) => {
+  const headers = request.headers;
+  const token = headers["token"];
+
+  if (token !== password) {
+    response.status(401).send("Password is incorrect!");
+    return;
+  }
+
   // Read the json body from the request
   const body = request.body;
 
@@ -123,6 +132,14 @@ app.post("/api/products", async (request, response) => {
 // UPDATE EXISTING PRODUCT BY ID
 // PUT /api/products/:id { name: 'apples', price: 4.99, category: 'produce }
 app.put("/api/products/:id", async (request, response) => {
+  const headers = request.headers;
+  const token = headers["token"];
+
+  if (token !== password) {
+    response.status(401).send("Password is incorrect!");
+    return;
+  }
+
   const productId = request.params.id;
   const body = request.body;
 
@@ -167,6 +184,14 @@ app.put("/api/products/:id", async (request, response) => {
 // DELETE EXISTING PRODUCY BY ID
 // DELETE /api/products/:id
 app.delete("/api/products/:id", async (request, response) => {
+  const headers = request.headers;
+  const token = headers["token"];
+
+  if (token !== password) {
+    response.status(401).send("Password is incorrect!");
+    return;
+  }
+
   const productId = request.params.id;
 
   if (!ObjectID.isValid(productId)) {
